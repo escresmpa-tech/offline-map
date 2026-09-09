@@ -1,5 +1,5 @@
 // 1. Initialize Map
-const map = L.map('map').setView([7.058, 80.34], 14); 
+const map = L.map('map').setView([0, 0], 2); 
 
 // 2. Load OpenStreetMap Basemap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -7,14 +7,49 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// 3. Load your single GeoJSON file
-fetch('map_data.geojson')
-    .then(response => response.json())
-    .then(data => {
-        const myLayers = L.geoJSON(data).addTo(map);
-        map.fitBounds(myLayers.getBounds());
+// 3. List all your exported files exactly as named
+const spatialFiles = [
+    'AMSL_115.json', 
+    'AMSL_125.json', 
+    'C_TINN_BNDY.json', 
+    'Camp_sites.json',
+    'Contour.json', 
+    'DAM.json', 
+    'Diversion_canal.json', 
+    'Excavation area.json',
+    'Existing_Buildings.json', 
+    'Irrigation_outlet.json', 
+    'New_access.json',
+    'Power_house.json', 
+    'PS.json', 
+    'Road.geojson', 
+    'Saddle_dam.json', 
+    'Wee_Oya.json'
+];
+
+// A palette of distinct colors for the 16 different layers
+const layerColors = [
+    '#e6194b', '#3cb44b', '#ffe119', '#4363d8', 
+    '#f58231', '#911eb4', '#46f0f0', '#f032e6', 
+    '#bcf60c', '#fabebe', '#008080', '#e6beff', 
+    '#9a6324', '#fffac8', '#800000', '#aaffc3'
+];
+
+// Load all files simultaneously
+Promise.all(spatialFiles.map(file => fetch(file).then(res => res.json())))
+    .then(datasets => {
+        const allLayersGroup = L.featureGroup(); // Group them to calculate the final bounding box
+        
+        datasets.forEach((data, index) => {
+            L.geoJSON(data, {
+                style: { color: layerColors[index], weight: 2, fillOpacity: 0.4 }
+            }).addTo(allLayersGroup);
+        });
+        
+        allLayersGroup.addTo(map);
+        map.fitBounds(allLayersGroup.getBounds()); // Auto-zoom to fit the entire project
     })
-    .catch(error => console.error("Error loading GeoJSON:", error));
+    .catch(error => console.error("Error loading spatial files:", error));
 
 // 4. GPS Tracking
 const userMarker = L.circleMarker([0, 0], { color: 'red', radius: 8, fillOpacity: 1 }).addTo(map);
